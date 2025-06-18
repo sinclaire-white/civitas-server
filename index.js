@@ -1,9 +1,9 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require('mongodb');
-const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.zxppowi.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
+const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.zxppowi.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -11,8 +11,7 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
+// Create a MongoClient
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -21,16 +20,69 @@ const client = new MongoClient(uri, {
   }
 });
 
+// Define a root route
+app.get('/', (req, res) => {
+  res.send('Server is running!');
+});
+
+// Connect to MongoDB and start the server
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-    // Send a ping to confirm a successful connection
+
+    const eventsCollection = client.db('civitas').collection('events');
+    app.get('/events', async (req, res) =>{
+      const cursor = eventsCollection.find();
+      const result = await cursor.toArray();
+      res.send(result)
+    })
+
+app.get('/events/:id', async (req, res) => {
+  const { id } = req.params;
+
+  const event = await eventsCollection.findOne({ _id: new ObjectId(id) });
+
+  if (event) {
+    res.send(event);
+  } else {
+    res.status(404).send({ error: "Event not found" });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
-  } finally {
-    // Ensures that the client will close when you finish/error
-    await client.close();
+
+    
+
+
+
+
+
+
+    // Start the Express server after MongoDB connection is established
+    app.listen(port, () => {
+      console.log(`Server is running on port ${port}`);
+    });
+  } catch (error) {
+    console.error("Error connecting to MongoDB:", error);
+    process.exit(1);
   }
 }
+
+// Don't close the connection - keep it open for the application
 run().catch(console.dir);
