@@ -7,7 +7,6 @@ const admin = require("firebase-admin");
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Initialize Firebase Admin SDK
 admin.initializeApp({
     credential: admin.credential.cert({
         projectId: process.env.FIREBASE_PROJECT_ID,
@@ -16,7 +15,6 @@ admin.initializeApp({
     }),
 });
 
-// MongoDB connection
 const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.zxppowi.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 const client = new MongoClient(uri, {
     serverApi: {
@@ -29,7 +27,6 @@ const client = new MongoClient(uri, {
 app.use(cors());
 app.use(express.json());
 
-// Middleware to verify Firebase token
 const verifyToken = async (req, res, next) => {
     const token = req.headers.authorization?.split(" ")[1];
     if (!token) {
@@ -54,18 +51,18 @@ async function run() {
         const eventsCollection = client.db("civitas").collection("events");
         const participationsCollection = client.db("civitas").collection("participations");
 
-        // Get all events with filtering and search
         app.get("/events", async (req, res) => {
             const { eventType, search } = req.query;
             const query = {};
-            if (eventType) query.eventType = eventType;
+            if (eventType) query.eventType = { $regex: `^${eventType}$`, $options: "i" };
             if (search) query.title = { $regex: search, $options: "i" };
+            console.log('Events query:', query);
             const cursor = eventsCollection.find(query);
             const result = await cursor.toArray();
+            console.log('Events found:', result.length);
             res.send(result);
         });
 
-        // Get event by ID
         app.get("/events/:id", verifyToken, async (req, res) => {
             const { id } = req.params;
             try {
@@ -80,7 +77,6 @@ async function run() {
             }
         });
 
-        // Join event
         app.post("/participations", verifyToken, async (req, res) => {
             const { userEmail, eventId } = req.body;
             if (req.user.email !== userEmail) {
@@ -99,29 +95,28 @@ async function run() {
         });
 
         app.get("/participations", verifyToken, async (req, res) => {
-    const { email } = req.query;
-    if (req.user.email !== email) {
-        return res.status(403).send({ message: "Unauthorized" });
-    }
-    try {
-        const participations = await participationsCollection.find({ userEmail: email }).toArray();
-        if (!participations.length) {
-            return res.send([]);
-        }
-        const eventIds = participations.map(p => new ObjectId(p.eventId));
-        const events = await eventsCollection.find({ _id: { $in: eventIds } }).toArray();
-        const joinedEvents = events.map(event => {
-            const participation = participations.find(p => p.eventId === event._id.toString());
-            return { ...event, joinedAt: participation.joinedAt };
+            const { email } = req.query;
+            if (req.user.email !== email) {
+                return res.status(403).send({ message: "Unauthorized" });
+            }
+            try {
+                const participations = await participationsCollection.find({ userEmail: email }).toArray();
+                if (!participations.length) {
+                    return res.send([]);
+                }
+                const eventIds = participations.map(p => new ObjectId(p.eventId));
+                const events = await eventsCollection.find({ _id: { $in: eventIds } }).toArray();
+                const joinedEvents = events.map(event => {
+                    const participation = participations.find(p => p.eventId === event._id.toString());
+                    return { ...event, joinedAt: participation.joinedAt };
+                });
+                res.send(joinedEvents);
+            } catch (error) {
+                console.error('Error fetching participations:', error);
+                res.status(500).send({ message: "Failed to fetch joined events" });
+            }
         });
-        res.send(joinedEvents);
-    } catch (error) {
-        console.error('Error fetching participations:', error);
-        res.status(500).send({ message: "Failed to fetch joined events" });
-    }
-});
 
-        // Create event (for Create.jsx)
         app.post("/events", verifyToken, async (req, res) => {
             const { title, description, eventType, thumbnail, location, date, creatorEmail } = req.body;
             if (req.user.email !== creatorEmail) {
@@ -141,7 +136,6 @@ async function run() {
             res.send({ message: "Event created successfully", id: result.insertedId });
         });
 
-        // Get events created by user (for future Manage.jsx)
         app.get("/events/created", verifyToken, async (req, res) => {
             const { email } = req.query;
             if (req.user.email !== email) {
