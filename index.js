@@ -31,24 +31,35 @@ async function run() {
     await client.connect();
 
     const eventsCollection = client.db('civitas').collection('events');
-    app.get('/events', async (req, res) =>{
-      const cursor = eventsCollection.find();
-      const result = await cursor.toArray();
-      res.send(result)
-    })
 
-app.get('/events/:id', async (req, res) => {
-  const { id } = req.params;
 
-  const event = await eventsCollection.findOne({ _id: new ObjectId(id) });
-
-  if (event) {
-    res.send(event);
-  } else {
-    res.status(404).send({ error: "Event not found" });
-  }
+    // Get all events with filtering and search
+ app.get("/events", async (req, res) => {
+    const { eventType, search } = req.query;
+    const query = {};
+    if (eventType) query.eventType = eventType;
+    if (search) query.title = { $regex: search, $options: "i" };
+    const cursor = eventsCollection.find(query);
+    const result = await cursor.toArray();
+    res.send(result);
 });
 
+// Get event by ID
+
+
+app.get("/events/:id", verifyToken, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const event = await eventsCollection.findOne({ _id: new ObjectId(id) });
+        if (event) {
+            res.send(event);
+        } else {
+            res.status(404).send({ message: "Event not found" });
+        }
+    } catch (error) {
+        res.status(400).send({ message: "Invalid event ID" });
+    }
+});
 
 
 
