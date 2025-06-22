@@ -73,21 +73,21 @@ async function run() {
       if (eventType)
         query.eventType = { $regex: `^${eventType}$`, $options: "i" };
       if (searchQuery) query.title = { $regex: searchQuery, $options: "i" };
-      console.log("Events query:", query);
+    //   console.log("Events query:", query);
       const cursor = eventsCollection.find(query);
       const result = await cursor.toArray();
-      console.log("Events found:", result.length);
+    //   console.log("Events found:", result.length);
       res.json(result);
     });
 
 
     app.get("/events/created", verifyToken, async (req, res) => {
-        console.log("--- START /events/created request handler ---");
-        const userEmail = req.user.email; // Email from the verified token
-        console.log("Fetching created events for user:", userEmail);
+        
+        const userEmail = req.user.email; 
+        // console.log("Fetching created events for user:", userEmail);
 
         if (!userEmail) {
-            console.log("DEBUG: User email not found in token for /events/created.");
+            // console.log("DEBUG: User email not found in token for /events/created.");
             return res
                 .status(400)
                 .json({ message: "User email not found in token." });
@@ -99,9 +99,7 @@ async function run() {
                 .find({ creatorEmail: userEmail }) 
                 .toArray();
 
-            console.log(
-                `Found ${createdEvents.length} events created by ${userEmail}.`
-            );
+            // console.log( `Found ${createdEvents.length} events created by ${userEmail}.`);
             res.json(createdEvents);
         } catch (error) {
             console.error("Error fetching created events:", error);
@@ -112,7 +110,7 @@ async function run() {
                     error: error.message,
                 });
         }
-        console.log("--- END /events/created request handler ---");
+        
     });
     
 
@@ -121,9 +119,9 @@ async function run() {
 
     // Get event by ID
     app.get("/events/:id", verifyToken, async (req, res) => {
-        console.log("--- START /events/:id request handler ---");
+        
 const { id } = req.params;
-        console.log("Attempting to find event by ID:", id);
+        // console.log("Attempting to find event by ID:", id);
  try {
  const event = await eventsCollection.findOne({ _id: new ObjectId(id) });
  if (!event) {
@@ -133,7 +131,7 @@ const { id } = req.params;
  } catch (error) {
  res.status(400).json({ message: "Invalid event ID" });
 }
-        console.log("--- END /events/:id request handler ---");
+        
 });
 
     // Join event
@@ -227,7 +225,7 @@ const { id } = req.params;
 
 app.get("/events/created", verifyToken, async (req, res) => {
     try {
-        console.log("User email from token:", req.user.email); 
+        // console.log("User email from token:", req.user.email); 
         
         if (!req.user || !req.user.email) {
             return res.status(400).json({ message: "User email not available" });
@@ -237,7 +235,7 @@ app.get("/events/created", verifyToken, async (req, res) => {
             creatorEmail: req.user.email 
         }).toArray();
 
-        console.log("Found events:", events.length); 
+        // console.log("Found events:", events.length); 
         res.status(200).json(events);
     } catch (error) {
         console.error("Error in /events/created:", error);
