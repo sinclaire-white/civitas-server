@@ -323,6 +323,25 @@ app.get("/events/created", verifyToken, async (req, res) => {
       }
     });
 
+app.get("/recent-events", async (req, res) => {
+  try {
+    const events = await eventsCollection
+      .find({})
+      .sort({ date: -1 }) 
+      .limit(10) 
+      .toArray();
+    res.json(events);
+  } catch (error) {
+    console.error("Error fetching recent events:", error);
+    res.status(500).json({ message: "Failed to fetch recent events" });
+  }
+});
+
+
+
+
+
+
     // await client.db("admin").command({ ping: 1 });
     // console.log(
     //   "Pinged your deployment. You successfully connected to MongoDB!"
